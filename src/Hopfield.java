@@ -17,6 +17,7 @@ public class Hopfield {
                 String inputFile = br.readLine();
                 inputFile = inputFile.concat(".txt");
                 HopTrain(inputFile);
+                System.exit(1);
             }
             if(input == 2) {
                 System.out.println("Enter the saved weights file name: ");
@@ -27,66 +28,135 @@ public class Hopfield {
                 testFile = testFile.concat(".txt");
                 HopTest(weightFile, testFile);
             }
-            else
-                System.out.println("invalid input, try again.");
-
         }
     }
     private static void HopTrain(String inputFile) throws IOException {
+        ImageData fData = fileParser(inputFile);
+
+        int dim = fData.getDim();
+        int numVecs = fData.getVec();
+        int cols = fData.getCols();
+        int rows = fData.getRows();
+        int[][][] matrixArr = fData.getArr();
+
+        System.out.println("dim: "+dim);
+        System.out.println("num vecs: "+numVecs);
+        int[][] weightMatrix = initializeWeights(fData);
+
+    }
+    private static int[][] initializeWeights(ImageData fData) throws IOException {
+        int dim = fData.getDim();
+        int numVecs = fData.getVec();
+        int cols = fData.getCols();
+        int rows = fData.getRows();
+        int[][][] matrixArr = fData.getArr();
+        int[][] weightMatrix = new int[cols][rows];
+        for(int i = 0; i < numVecs; i++) {
+            System.out.println("This is arr " + (i + 1) + ", which is size " + rows + "x" + cols);
+            //each individual matrix set
+            int[][] matrix = new int[rows][cols];
+            for (int j = 0; j < rows; j++) {
+                for (int k = 0; k < cols; k++) {
+                    matrix[j][k] = matrixArr[i][j][k];
+                    System.out.print(matrix[j][k]);
+                }
+                System.out.println();
+            }
+            System.out.println();
+            System.out.println("transpose");
+
+            //finds transpose of the matrix
+            int[][] matrixTranspose = new int[cols][rows];
+            for(int j = 0; j < cols; j++) {
+                for(int k = 0; k < rows; k++) {
+                    matrixTranspose[j][k] = matrix[k][j];
+                    System.out.print(matrixTranspose[j][k]);
+                }
+                System.out.println();
+            }
+            System.out.println();
+
+            //matrix multiplcation st*s
+            System.out.println("weight");
+            for(int j = 0; j < cols; j++) {
+                for(int k = 0; k < rows; k++) {
+                    int tempSum = 0;
+                    for(int l = 0; l < rows; l++) {
+                        tempSum += matrixTranspose[j][l]*matrix[l][k];
+                    }
+                    if(j != k) {
+                        weightMatrix[j][k] += tempSum;
+                    }
+                    System.out.print(weightMatrix[j][k] + ", ");
+                }
+                System.out.println();
+            }
+            System.out.println();
+        }
+        return weightMatrix;
+    }
+    private static ImageData fileParser(String inputFile) throws IOException {
         //reading files
-        FileInputStream fstream = new FileInputStream(inputFile);
-        DataInputStream in = new DataInputStream(fstream);
-        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        FileReader fread = new FileReader(inputFile);
+        BufferedReader br = new BufferedReader(fread);
 
         //initializing and reading top 3 numbers
         int dim, numVectors;
+        int rowLen;
+        int colLen;
         dim =  Integer.parseInt(br.readLine());
         numVectors = Integer.parseInt(br.readLine());
         String line;
-        for(int i = 0; i < numVectors; i++) {
-            br.readLine(); //the blank line before each set of vectors
+        int[][][] matrix;
 
-            //reads the first line to determine how many characters per line
+        br.readLine(); //the blank line before each set of vectors
+
+        //reads the first line to determine how many characters per line
+        line = br.readLine();
+        String[] tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
+        //System.out.println(tempRow.length);
+        int[] tempRow2 = new int[tempRow.length];
+        for (int j = 0; j < tempRow.length; j++) {
+            tempRow2[j] = Integer.parseInt(tempRow[j]);
+            //System.out.print(tempRow[j]+", ");
+            //System.out.print(tempRow2[j]);
+        }
+        //System.out.println();
+        rowLen = tempRow.length;
+        colLen = dim/tempRow.length;
+        //System.out.println("Our matrix is "+rowLen+"x"+colLen);
+        matrix = new int[numVectors][colLen][rowLen];
+        matrix[0][0] = tempRow2;
+
+        for(int j = 1; j < colLen; j++) {
             line = br.readLine();
-            String[] tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
-            System.out.println(tempRow.length);
-            int[] tempRow2 = new int[tempRow.length];
-            for (int j = 0; j < tempRow.length; j++) {
-                tempRow2[j] = Integer.parseInt(tempRow[j]);
-                //System.out.print(tempRow[j]+", ");
-                System.out.print(tempRow2[j]+", ");
+            tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
+            //System.out.println(line);
+            for (int k = 0; k < rowLen; k++) {
+                matrix[0][j][k] = Integer.parseInt(tempRow[k]);
+                //System.out.print(matrix[0][j][k]);
             }
-            System.out.println();
-            int rowLen = tempRow.length;
-            int colLen = dim/tempRow.length;
-            System.out.println("Our matrix is "+rowLen+"x"+colLen);
-            int[][] matrix = new int[colLen][rowLen];
-            int matrixPos = 0;
-            matrix[matrixPos] = tempRow2;
-            matrixPos++;
+            //System.out.println();
+        }
+        //System.out.println();
+        //br.readLine(); //blank line
 
-            for(int j = 0; j < colLen-1; j++) {
+        for(int i = 1; i < numVectors; i++) {
+            br.readLine(); //the blank line before each set of vectors
+            for(int j = 0; j < colLen; j++) {
                 line = br.readLine();
                 tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
-                for (int k = 0; k < rowLen; j++) {
-                    tempRow2[k] = Integer.parseInt(tempRow[k]);
-                    //System.out.print(tempRow2[k]+", ");
+                for (int k = 0; k < rowLen; k++) {
+                    matrix[i][j][k] = Integer.parseInt(tempRow[k]);
+                    //System.out.print(matrix[i][j][k]);
                 }
-                System.out.println();
-                matrix[matrixPos] = tempRow2;
-                matrixPos++;
+                //System.out.println();
             }
-            /*
-            for(int j = 0; j < colLen; j++) {
-                for(int k = 0; k < rowLen; k++) {
-                    System.out.print(matrix[j][k]+", ");
-                }
-                System.out.println();
-            }
-            */
-            //br.readLine(); //blank line
+            //System.out.println();
         }
 
+        ImageData fData = new ImageData(dim, numVectors, matrix, rowLen, colLen);
+        return fData;
     }
     private static void HopTest(String weightFile, String testFile) {
 
