@@ -17,16 +17,22 @@ public class Hopfield {
                 String inputFile = br.readLine();
                 inputFile = inputFile.concat(".txt");
                 HopTrain(inputFile);
-                System.exit(1);
             }
             if(input == 2) {
                 System.out.println("Enter the saved weights file name: ");
                 String weightFile = br.readLine();
                 weightFile = weightFile.concat(".txt");
+                System.out.println("Enter the file you used to train your weights: ");
+                String inputFile = br.readLine();
+                inputFile = inputFile.concat(".txt");
                 System.out.println("Enter the testing file name: ");
                 String testFile = br.readLine();
                 testFile = testFile.concat(".txt");
-                HopTest(weightFile, testFile);
+                System.out.println("Enter maximum number of iterations: ");
+                String iterStr = br.readLine();
+                int iter = Integer.parseInt(iterStr);
+                HopTest(weightFile, inputFile, testFile, iter);
+                System.exit(1);
             }
         }
     }
@@ -41,26 +47,25 @@ public class Hopfield {
 
         System.out.println("dim: "+dim);
         System.out.println("num vecs: "+numVecs);
-        int[][] weightMatrix = initializeWeights(fData);
+        int[][] weightMatrix = trainWeights(fData);
 
 
         FileWriter writer = new FileWriter("weights.txt");
 
         //writes first 2 numbers to file
-        writer.write(dim + "\n");
-        writer.write(numVecs + "\n");
-        writer.write("\n");
+        //writer.write(dim + "\n");
+        //writer.write(numVecs + "\n");
+        //writer.write("\n");
         //going through all weights and writing them
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                writer.write(weightMatrix[i][j] + ", ");
+                writer.write(weightMatrix[i][j] + ",");
             }
             writer.write("\n");
         }
         writer.close();
-
     }
-    private static int[][] initializeWeights(ImageData fData) throws IOException {
+    private static int[][] trainWeights(ImageData fData) throws IOException {
         int dim = fData.getDim();
         int numVecs = fData.getVec();
         int cols = fData.getCols();
@@ -146,7 +151,12 @@ public class Hopfield {
 
         for(int j = 1; j < colLen; j++) {
             line = br.readLine();
-            tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
+            if(line.isEmpty()) {
+                for(int k = 0; k < colLen; k++)
+                    tempRow[k] = "0";
+            }
+            else
+                tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
             //System.out.println(line);
             for (int k = 0; k < rowLen; k++) {
                 matrix[0][j][k] = Integer.parseInt(tempRow[k]);
@@ -161,7 +171,12 @@ public class Hopfield {
             br.readLine(); //the blank line before each set of vectors
             for(int j = 0; j < colLen; j++) {
                 line = br.readLine();
-                tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
+                if(line.isEmpty()) {
+                    for(int k = 0; k < colLen; k++)
+                        tempRow[k] = "0";
+                }
+                else
+                    tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
                 for (int k = 0; k < rowLen; k++) {
                     matrix[i][j][k] = Integer.parseInt(tempRow[k]);
                     //System.out.print(matrix[i][j][k]);
@@ -174,8 +189,81 @@ public class Hopfield {
         ImageData fData = new ImageData(dim, numVectors, matrix, rowLen, colLen);
         return fData;
     }
-    private static void HopTest(String weightFile, String testFile) {
+    private static void HopTest(String weightFile, String inputFile, String testFile, int maxIter) throws IOException {
+        ImageData testData = fileParser(testFile);
+        ImageData trainData = fileParser(inputFile);
+        //reading files
+        FileReader fread = new FileReader(weightFile);
+        BufferedReader br = new BufferedReader(fread);
+        int rows = testData.getRows();
+        int cols = testData.getCols();
+        int numVecs = testData.getVec();
+        int[][][] testMatrix = testData.getArr();
+        int[][][] trainMatrix = trainData.getArr();
 
+        for(int i = 0; i < numVecs; i++) {
+            for(int j = 0; j < rows; j++) {
+                for(int k = 0; k < cols; k++) {
+                    System.out.print(testMatrix[i][j][k]);
+                }
+                System.out.println();
+            }
+            System.out.println();
+        }
+
+        String line;
+        int[][] weightMatrix = new int[rows][cols];
+        for(int i = 0; i < rows; i++) {
+            line = br.readLine();
+            String[] temp = line.split(",");
+            for(int j = 0; j < cols; j++) {
+                weightMatrix[i][j] = Integer.parseInt(temp[j]);
+                System.out.print(weightMatrix[i][j]+",");
+            }
+            System.out.println();
+        }
+        //gotta rewrite cuz used wrong algorithm!!!!
+        for(int i = 0; i < numVecs; i++) {
+            //for a given test pattern s
+            // matrix multiplcation x*W
+            int[][] matrixChecker = weightMatrix;
+            boolean checker = false;
+            int iter = 0;
+            while(!checker && iter != maxIter) {
+                for (int j = 0; j < cols; j++) {
+                    for (int k = 0; k < rows; k++) {
+                        int tempSum = 0;
+                        for (int l = 0; l < rows; l++) {
+                            tempSum += testMatrix[i][j][l] * matrixChecker[l][k];
+                        }
+                        if (tempSum > 1) {
+                            matrixChecker[j][k] = 1;
+                        }
+                        if (tempSum == 0) {
+                            matrixChecker[j][k] = 0;
+                        }
+                        if (tempSum < 1) {
+                            matrixChecker[j][k] = -1;
+                        }
+                        System.out.print(matrixChecker[j][k] + ", ");
+                    }
+                    System.out.println();
+                }
+                System.out.println();
+                boolean same = true;
+                for (int v = 0; v < numVecs; v++) {
+                    for (int j = 0; j < cols; j++) {
+                        for (int k = 0; k < rows; k++) {
+                            if (matrixChecker[j][k] != trainMatrix[v][j][k])
+                                same = false;
+                        }
+                    }
+                    if (same)
+                        checker = true;
+                }
+                iter++;
+            }
+        }
     }
 
 }
