@@ -43,6 +43,22 @@ public class Hopfield {
         System.out.println("num vecs: "+numVecs);
         int[][] weightMatrix = initializeWeights(fData);
 
+
+        FileWriter writer = new FileWriter("weights.txt");
+
+        //writes first 2 numbers to file
+        writer.write(dim + "\n");
+        writer.write(numVecs + "\n");
+        writer.write("\n");
+        //going through all weights and writing them
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                writer.write(weightMatrix[i][j] + ", ");
+            }
+            writer.write("\n");
+        }
+        writer.close();
+
     }
     private static int[][] initializeWeights(ImageData fData) throws IOException {
         int dim = fData.getDim();
@@ -110,10 +126,10 @@ public class Hopfield {
         int[][][] matrix;
 
         br.readLine(); //the blank line before each set of vectors
-
         //reads the first line to determine how many characters per line
         line = br.readLine();
-        String[] tempRow = line.replace(" ", "0,").replace("O", "1,").split(",");
+        line = line.replace(" ", "0,").replace("O", "1,");
+        String[] tempRow = line.split(",");
         //System.out.println(tempRow.length);
         int[] tempRow2 = new int[tempRow.length];
         for (int j = 0; j < tempRow.length; j++) {
